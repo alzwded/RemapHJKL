@@ -12,6 +12,7 @@ TODO
 
 More vimness! In particular:
 
+* [ ] smarter icon that reflects the current state (e.g. `i` and `n`)
 * [ ] `^D` & `^U`
 * [ ] `^` & `$`
 * [ ] `G`
