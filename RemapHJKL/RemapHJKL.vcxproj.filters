@@ -51,5 +51,11 @@
     <Image Include="RemapHJKL.ico">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="RemapHJKL-active.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="small-active.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>

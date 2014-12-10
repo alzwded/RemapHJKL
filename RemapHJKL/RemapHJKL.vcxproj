@@ -160,7 +160,9 @@
     <ResourceCompile Include="RemapHJKL.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="RemapHJKL-active.ico" />
     <Image Include="RemapHJKL.ico" />
+    <Image Include="small-active.ico" />
     <Image Include="small.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

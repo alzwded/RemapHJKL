@@ -23,6 +23,20 @@ INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 BOOL myState = FALSE;
 HWND g_hwnd = NULL;
 HHOOK g_hook = NULL;
+HICON g_icons[2] = { NULL, NULL };
+
+
+void Cleanup()
+{
+	UnregisterHotKey(g_hwnd, 1);
+	UnhookWindowsHookEx(g_hook);
+	NOTIFYICONDATA nid;
+	nid.cbSize = sizeof(NOTIFYICONDATA);
+	nid.uID = MY_NOTIFICATION_ICON;
+	nid.hWnd = g_hwnd;
+	nid.uFlags = 0;
+	Shell_NotifyIcon(NIM_DELETE, &nid);
+}
 
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -59,28 +73,9 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 		}
 	}
 
-	UnregisterHotKey(g_hwnd, 1);
-	UnhookWindowsHookEx(g_hook);
-	NOTIFYICONDATA nid;
-	nid.cbSize = sizeof(NOTIFYICONDATA);
-	nid.uID = MY_NOTIFICATION_ICON;
-	nid.hWnd = g_hwnd;
-	nid.uFlags = 0;
-	Shell_NotifyIcon(NIM_DELETE, &nid);
+	Cleanup();
 	
 	return (int) msg.wParam;
-}
-
-void Cleanup()
-{
-	UnregisterHotKey(g_hwnd, 1);
-	UnhookWindowsHookEx(g_hook);
-	NOTIFYICONDATA nid;
-	nid.cbSize = sizeof(NOTIFYICONDATA);
-	nid.uID = MY_NOTIFICATION_ICON;
-	nid.hWnd = g_hwnd;
-	nid.uFlags = 0;
-	Shell_NotifyIcon(NIM_DELETE, &nid);
 }
 
 
@@ -194,7 +189,7 @@ void ShowTip(BOOL active)
 	ZeroMemory(&nid, sizeof(NOTIFYICONDATA));
 	nid.cbSize = sizeof(NOTIFYICONDATA);
 	nid.uID = MY_NOTIFICATION_ICON;
-	nid.uFlags = NIF_TIP | NIF_SHOWTIP;
+	nid.uFlags = NIF_TIP | NIF_SHOWTIP | NIF_ICON;
 	nid.hWnd = g_hwnd;
 	nid.uVersion = NOTIFYICON_VERSION_4;
 
@@ -202,8 +197,10 @@ void ShowTip(BOOL active)
 	// TODO inform about current hotkey better
 	if (active) {
 		wsprintf(tip, _T("RemapHJKL (active) - Click to exit forever"));
+		nid.hIcon = g_icons[1];
 	} else {
 		wsprintf(tip, _T("RemapHJKL (not active) - Click to exit forever"));
+		nid.hIcon = g_icons[0];
 	}
 	_tcsncpy_s(nid.szTip, tip, _tcslen(tip));
 
@@ -250,8 +247,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    nid.uVersion = NOTIFYICON_VERSION_4;
    nid.uCallbackMessage = MY_NOTIFY_ICON_MESSAGE_ID;
 
+   g_icons[0] = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SMALL));
+   g_icons[1] = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SMALL_ACTIVE));
 
-   nid.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SMALL));
+   nid.hIcon = g_icons[0];
    HRESULT sniHr = Shell_NotifyIcon(NIM_ADD, &nid);
    nid.uFlags = 0;
    sniHr = Shell_NotifyIcon(NIM_SETVERSION, &nid);
