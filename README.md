@@ -12,9 +12,10 @@ TODO
 
 More vimness! In particular:
 
-* [ ] smarter icon that reflects the current state (e.g. `i` and `n`)
-* [ ] `^D` & `^U`
-* [ ] `^` & `$`
+* [x] smarter icon that reflects the current state (e.g. `i` and `n`)
+* [x] ~~`^D` & `^U`~~ as F and B for now
+* [x] `^` & `$`
 * [ ] `G`
 * [ ] `y`, `d`, `p`
 * [ ] maybe registers someday
+* [ ] visual mode
