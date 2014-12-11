@@ -24,6 +24,8 @@ BOOL myState = FALSE;
 HWND g_hwnd = NULL;
 HHOOK g_hook = NULL;
 HICON g_icons[2] = { NULL, NULL };
+BOOL g_ctrl = FALSE;
+BOOL g_shift = FALSE;
 
 
 void Cleanup()
@@ -110,7 +112,24 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
 {
 	if (code != HC_ACTION) return CallNextHookEx(NULL, code, wParam, lParam);
 
-	if (!myState) return CallNextHookEx(NULL, code, wParam, lParam);
+	if (!myState) {
+		if (g_shift) {
+			INPUT ip;
+			ZeroMemory(&ip, sizeof(ip));
+			ip.type = INPUT_KEYBOARD;
+			g_shift = FALSE;
+			LPARAM dwFlags = KEYEVENTF_KEYUP;
+			dwFlags |= KEYEVENTF_EXTENDEDKEY;
+			dwFlags |= KEYEVENTF_SCANCODE;
+			ip.ki.wVk = VK_LSHIFT;
+			ip.ki.wScan = MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC);
+			ip.ki.dwFlags = dwFlags;
+			ip.ki.time = 0;
+			ip.ki.dwExtraInfo = 0;
+			SendInput(1, &ip, sizeof(ip));
+		}
+		return CallNextHookEx(NULL, code, wParam, lParam);
+	}
 
 	switch (wParam)
 	{
@@ -121,8 +140,36 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
 							PKBDLLHOOKSTRUCT hks = (PKBDLLHOOKSTRUCT)lParam;
 							// SendInput
 							switch (hks->vkCode) {
+							case VK_ESCAPE: 
+								if (!(wParam == WM_KEYDOWN && g_shift)) return 1; // CallNextHookEx(NULL, code, wParam, lParam);
+								wParam = WM_KEYDOWN;
+								/*FALLTHROUGH*/
+							case 'V': {
+										  if (wParam != WM_KEYDOWN) return 1; // CallNextHookEx(NULL, code, wParam, lParam);
+
+								INPUT ip;
+								ZeroMemory(&ip, sizeof(ip));
+								ip.type = INPUT_KEYBOARD;
+								g_shift = !g_shift;
+								LPARAM dwFlags = (g_shift) ? 0 : KEYEVENTF_KEYUP;
+								dwFlags |= KEYEVENTF_EXTENDEDKEY;
+								//dwFlags |= KEYEVENTF_SCANCODE;
+								ip.ki.wVk = VK_LSHIFT;
+								ip.ki.wScan = MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC);
+								ip.ki.dwFlags = dwFlags;
+								ip.ki.time = 0;
+								ip.ki.dwExtraInfo = 0;
+								SendInput(1, &ip, sizeof(ip));
+								return 1; }
+							case VK_LCONTROL:
+								//g_ctrl = wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN;
+								break;
 							case 'F':
 							case 'B':
+								//if (!g_ctrl) return CallNextHookEx(NULL, code, wParam, lParam); // I also need to eat the CTRL key...
+								// that would require greater changes, since in the abscence of a free ctrl key, I need to 
+								// implement the ctrl-arrows commands. So, let's mark that as a TODO
+								// TODO
 							case '4':
 							case '6':
 							case '0':
@@ -260,6 +307,25 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
+void FixShift()
+{
+	if (!myState && g_shift) {
+		INPUT ip;
+		ZeroMemory(&ip, sizeof(ip));
+		ip.type = INPUT_KEYBOARD;
+		g_shift = FALSE;
+		LPARAM dwFlags = KEYEVENTF_KEYUP;
+		dwFlags |= KEYEVENTF_EXTENDEDKEY;
+		dwFlags |= KEYEVENTF_SCANCODE;
+		ip.ki.wVk = VK_LSHIFT;
+		ip.ki.wScan = MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC);
+		ip.ki.dwFlags = dwFlags;
+		ip.ki.time = 0;
+		ip.ki.dwExtraInfo = 0;
+		SendInput(1, &ip, sizeof(ip));
+	}
+}
+
 //
 //  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -316,6 +382,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_HOTKEY:
 		myState = !myState;
 		ShowTip(myState);
+		FixShift();
 		break;
 	default:
 		return DefWindowProc(hWnd, message, wParam, lParam);
