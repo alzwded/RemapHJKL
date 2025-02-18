@@ -121,59 +121,103 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
 							PKBDLLHOOKSTRUCT hks = (PKBDLLHOOKSTRUCT)lParam;
 							// SendInput
 							switch (hks->vkCode) {
-							case 'F':
+                            // this is our hotkey out, and we need it to break out.
+                            case '3':
+                                break;
+                            // disable most keys to avoid confusion
+                            case 'D':
+                            case 'I':
+                            case 'G':
+                            case 'M':
+                            case 'N':
+                            case 'O':
+                            case 'P':
+                            case 'Q':
+                            case 'R':
+                            case 'S':
+                            case 'T':
+                            case 'U':
+                            case 'V':
+                            case 'W':
+                            case 'X':
+                            case 'Y':
+                            case 'Z':
+                            case '1':
+                            case '2':
+                            case '5':
+                            case '7':
+                            case '8':
+                            case '9':
+                                return 1;
+                            // keys to process
+                            case 'C':
 							case 'B':
-							case '4':
-							case '6':
+							case 'F':
 							case '0':
-							case 'H':
-							case 'J':
+							case '6':
+                            case 'A':
+							case '4':
+                            case 'E':
+							case 'L':
+                            case VK_SPACE:
 							case 'K':
-							case 'L':{
-										 //DWORD extended = (0x1000000 & lParam) >> 24; // Check if KEYEVENTF_EXTENDEDKEY
-										 BYTE scanCode = (0xFF0000 & lParam) >> 16;
+							case 'J':
+							case 'H':
+                            case VK_BACK:
+                                {
+                                    //DWORD extended = (0x1000000 & lParam) >> 24; // Check if KEYEVENTF_EXTENDEDKEY
+                                    BYTE scanCode = static_cast<BYTE>(((0xFF0000u & lParam) >> 16) & 0xFFu);
 
-										 // Check if KEYEVENTF_KEYUP, otherwise will be set to down
-										 LPARAM dwFlags = (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) ? KEYEVENTF_KEYUP : 0;
-										 dwFlags |= KEYEVENTF_EXTENDEDKEY;
-										 dwFlags |= KEYEVENTF_SCANCODE;
+                                    // Check if KEYEVENTF_KEYUP, otherwise will be set to down
+                                    auto dwFlags = (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) ? KEYEVENTF_KEYUP : 0;
+                                    dwFlags |= KEYEVENTF_EXTENDEDKEY;
+                                    dwFlags |= KEYEVENTF_SCANCODE;
 
-										 INPUT ip;
-										 ZeroMemory(&ip, sizeof(ip));
-										 ip.type = INPUT_KEYBOARD;
-										 switch (hks->vkCode) {
-										 case 'H':
-											 ip.ki.wVk = VK_LEFT; 
-											 break;
-										 case 'J':
-											 ip.ki.wVk = VK_DOWN;
-											 break;
-										 case 'K':
-											 ip.ki.wVk = VK_UP;
-											 break;
-										 case 'L':
-											 ip.ki.wVk = VK_RIGHT;
-											 break;
-										 case '4':
-											 ip.ki.wVk = VK_END;
-											 break;
-										 case '6':
-										 case '0':
-											 ip.ki.wVk = VK_HOME;
-											 break;
-										 case 'F':
-											 ip.ki.wVk = VK_NEXT;
-											 break;
-										 case 'B':
-											 ip.ki.wVk = VK_PRIOR;
-											 break;
-										 }
-										 ip.ki.wScan = MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC);
-										 ip.ki.dwFlags = dwFlags;
-										 ip.ki.time = 0;
-										 ip.ki.dwExtraInfo = 0;
-										 SendInput(1, &ip, sizeof(ip));
-										 return 1;						}
+                                    INPUT ip;
+                                    ZeroMemory(&ip, sizeof(ip));
+                                    ip.type = INPUT_KEYBOARD;
+                                    switch (hks->vkCode) {
+                                        case VK_BACK:
+                                        case 'H':
+                                            ip.ki.wVk = VK_LEFT; 
+                                            break;
+                                        case 'J':
+                                            ip.ki.wVk = VK_DOWN;
+                                            break;
+                                        case 'K':
+                                            ip.ki.wVk = VK_UP;
+                                            break;
+                                        case VK_SPACE:
+                                        case 'L':
+                                            ip.ki.wVk = VK_RIGHT;
+                                            break;
+                                        case 'E':
+                                        case '4':
+                                            ip.ki.wVk = VK_END;
+                                            break;
+                                        case 'A':
+                                        case '6':
+                                        case '0':
+                                            ip.ki.wVk = VK_HOME;
+                                            break;
+                                        case 'F':
+                                            ip.ki.wVk = VK_NEXT;
+                                            break;
+                                        case 'B':
+                                            ip.ki.wVk = VK_PRIOR;
+                                            break;
+                                            // I keep running into keyboards without a BRK key
+                                        case 'C':
+                                            ip.ki.wVk = VK_PAUSE;
+                                            break;
+                                            // disabled keys to eliminate confusion
+                                    }
+                                    ip.ki.wScan = MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC);
+                                    ip.ki.dwFlags = dwFlags;
+                                    ip.ki.time = 0;
+                                    ip.ki.dwExtraInfo = 0;
+                                    SendInput(1, &ip, sizeof(ip));
+                                    return 1;						}
 							}
 							break;
 	}
@@ -231,7 +275,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
       return FALSE;
    }
 
-   RegisterHotKey(hWnd, 1, MOD_ALT | MOD_CONTROL, '3'); // TODO cleanup
+   RegisterHotKey(hWnd, 1, MOD_ALT | MOD_CONTROL | MOD_NOREPEAT, '3'); // TODO cleanup
    g_hook = SetWindowsHookEx(WH_KEYBOARD_LL, &KeyboardHook, hInst, 0);
    g_hwnd = hWnd;
 
