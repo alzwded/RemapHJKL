@@ -189,7 +189,6 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
         case 'M':
         case 'N':
         case 'O':
-        case 'P':
         case 'Q':
         case 'S':
         case 'T':
@@ -205,6 +204,7 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
             return 1;
             // keys to process
         case 'R':
+        case 'P':
         case 'B':
         case 'F':
         case '0':
@@ -221,53 +221,95 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
                 BYTE scanCode = static_cast<BYTE>(((0xFF0000u & lParam) >> 16) & 0xFFu);
 
                 // Check if KEYEVENTF_KEYUP, otherwise will be set to down
-                auto dwFlags = (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) ? KEYEVENTF_KEYUP : 0;
-                dwFlags |= KEYEVENTF_EXTENDEDKEY;
-                dwFlags |= KEYEVENTF_SCANCODE;
+                auto dwFlags = 0
+                    | ((hks->flags & LLKHF_UP) || (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) ? KEYEVENTF_KEYUP : 0)
+                    | KEYEVENTF_SCANCODE /* for some reason, using wVk with SHIFT doesn't work, it only works with wScan */
+                    ;
 
                 INPUT ip;
                 ZeroMemory(&ip, sizeof(ip));
                 ip.type = INPUT_KEYBOARD;
+                ip.ki.wVk = static_cast<WORD>(hks->vkCode & 0xFFFFu);
                 switch (hks->vkCode) {
                     case 'H':
+                        // shennanigans
+                        // MapVirtualKey doesn't distinguish
+                        // betweek numpad 4 (0x00xx) and the actual
+                        // left key (0xE000).
+                        //
+                        // Pause and break are also fun, break is 0xE0xx,
+                        // but pause is 0xE1xx :-)
+                        //
+                        // So force the prefix
                         ip.ki.wVk = VK_LEFT; 
+                        ip.ki.wScan = (0xFF & MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC_EX)) | 0xE000;
+                        dwFlags |= KEYEVENTF_EXTENDEDKEY;
                         break;
                     case 'J':
                         ip.ki.wVk = VK_DOWN;
+                        ip.ki.wScan = (0xFF & MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC_EX)) | 0xE000;
+                        dwFlags |= KEYEVENTF_EXTENDEDKEY;
                         break;
                     case 'K':
                         ip.ki.wVk = VK_UP;
+                        ip.ki.wScan = (0xFF & MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC_EX)) | 0xE000;
+                        dwFlags |= KEYEVENTF_EXTENDEDKEY;
                         break;
                     case 'L':
                         ip.ki.wVk = VK_RIGHT;
+                        ip.ki.wScan = (0xFF & MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC_EX)) | 0xE000;
+                        dwFlags |= KEYEVENTF_EXTENDEDKEY;
                         break;
                     case 'E':
                     case '4':
                         ip.ki.wVk = VK_END;
+                        ip.ki.wScan = (0xFF & MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC_EX)) | 0xE000;
+                        dwFlags |= KEYEVENTF_EXTENDEDKEY;
                         break;
                     case 'A':
                     case '6':
                     case '0':
                         ip.ki.wVk = VK_HOME;
+                        ip.ki.wScan = (0xFF & MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC_EX)) | 0xE000;
+                        dwFlags |= KEYEVENTF_EXTENDEDKEY;
                         break;
                     case 'F':
                         ip.ki.wVk = VK_NEXT;
+                        ip.ki.wScan = (0xFF & MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC_EX)) | 0xE000;
+                        dwFlags |= KEYEVENTF_EXTENDEDKEY;
                         break;
                     case 'B':
                         ip.ki.wVk = VK_PRIOR;
+                        ip.ki.wScan = (0xFF & MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC_EX)) | 0xE000;
+                        dwFlags |= KEYEVENTF_EXTENDEDKEY;
                         break;
                         // I keep running into keyboards without a BRK key
-                    case 'R':
+                    case 'P':
+                        // this is a multibyte scan code for some reason
                         ip.ki.wVk = VK_PAUSE;
+                        // doesn't work well with scan codes.
+                        dwFlags &= ~(KEYEVENTF_SCANCODE);
                         break;
-                        // disabled keys to eliminate confusion
+                    case 'R':
+                        ip.ki.wVk = VK_CANCEL;
+                        dwFlags &= ~(KEYEVENTF_SCANCODE);
+                        //ip.ki.wScan = (0xFF & MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC_EX)) | 0xE000;
+                        //dwFlags |= KEYEVENTF_EXTENDEDKEY;
+                        break;
+                    default:
+                        {
+                            UINT outScanCode = MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC_EX);
+                            ip.ki.wScan = LOBYTE(outScanCode);
+                            dwFlags |= ((HIBYTE(outScanCode) & 0xE0) ? KEYEVENTF_EXTENDEDKEY : 0);
+                            break;
+                        }
                 }
-                ip.ki.wScan = MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC);
+                UINT outScanCode = MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC_EX);
                 ip.ki.dwFlags = dwFlags;
-                ip.ki.time = 0;
-                ip.ki.dwExtraInfo = 0;
+                ip.ki.time = hks->time;
+                ip.ki.dwExtraInfo = hks->dwExtraInfo;
                 SendInput(1, &ip, sizeof(ip));
-                return 1;					
+                return 1;
             }
     }
 

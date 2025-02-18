@@ -17,7 +17,8 @@ Keys
 | `6`, `0`, `A`         | `Home`                       |
 | `4`, `E`              | `End`                        |
 | `B`, `F`              | `PgUp`, `PgDwn`              |
-| `R`                   | `Pause/Brk`                  |
+| `R`                   | `Break` (use with Control)   |
+| `P`                   | `Pause` (the weirdest scancode) |
 
 All other letters and numbers get silently gobbled up to avoid confusion.
 
