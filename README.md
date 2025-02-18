@@ -38,11 +38,21 @@ Also, be warned, Ctrl + Alt on windows is *also* AltGr, except when it isn't
 and applications read the keys at a lower level. Actually, this is the problem,
 it sometimes is, sometimes isn't AltGr.
 
+Caveats
+=======
+
+Under heavy system load, this will break and keys will get stuck.
+
+Because it's no longer using `RegisterHotkey`, you can now run it multiple
+times, which will be confusing. I'll need to get around to making sure
+it only runs once...
+
 TODO
 ====
 
 More vimness! In particular:
 
+* [ ] check if it's already running
 * [x] smarter icon that reflects the current state (e.g. `i` and `n`)
 * [x] ~~`^D` & `^U`~~ as F and B for now
 * [x] `^` & `$`
