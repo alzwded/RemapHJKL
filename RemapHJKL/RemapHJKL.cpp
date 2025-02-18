@@ -3,11 +3,17 @@
 
 #include "stdafx.h"
 #include "RemapHJKL.h"
-#include <shellapi.h>
 
 #define MAX_LOADSTRING 100
 #define MY_NOTIFICATION_ICON 2
 #define MY_NOTIFY_ICON_MESSAGE_ID (WM_USER + 88)
+
+#define MY_KEYDOWN(hks) (!(hks->flags & (1u<<7)))
+#define MY_KEYUP(hks) (hks->flags & (1u<<7))
+
+#define HOTKEY_KEY '3'
+//#define HOTKEY_MODS (MOD_ALT | MOD_CONTROL | MOD_NOREPEAT)
+#define HOTKEY_MODS (MOD_WIN | MOD_CONTROL | MOD_NOREPEAT)
 
 // Global Variables:
 HINSTANCE hInst;								// current instance
@@ -21,6 +27,9 @@ LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
 BOOL myState = FALSE;
+BOOL g_lwin = FALSE;
+BOOL g_lctrl = FALSE;
+BOOL g_hotkeydown = FALSE;
 HWND g_hwnd = NULL;
 HHOOK g_hook = NULL;
 HICON g_icons[2] = { NULL, NULL };
@@ -105,125 +114,164 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 	return RegisterClassEx(&wcex);
 }
 
-#include <fstream>
 LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
 {
 	if (code != HC_ACTION) return CallNextHookEx(NULL, code, wParam, lParam);
-
-	if (!myState) return CallNextHookEx(NULL, code, wParam, lParam);
-
-	switch (wParam)
-	{
+    switch(wParam)
+    {
 	case WM_KEYDOWN:
 	case WM_KEYUP:
 	case WM_SYSKEYDOWN:
-	case WM_SYSKEYUP:	{
-							PKBDLLHOOKSTRUCT hks = (PKBDLLHOOKSTRUCT)lParam;
-							// SendInput
-							switch (hks->vkCode) {
-                            // this is our hotkey out, and we need it to break out.
-                            case '3':
-                                break;
-                            // disable most keys to avoid confusion
-                            case 'D':
-                            case 'I':
-                            case 'G':
-                            case 'M':
-                            case 'N':
-                            case 'O':
-                            case 'P':
-                            case 'Q':
-                            case 'R':
-                            case 'S':
-                            case 'T':
-                            case 'U':
-                            case 'V':
-                            case 'W':
-                            case 'X':
-                            case 'Y':
-                            case 'Z':
-                            case '1':
-                            case '2':
-                            case '5':
-                            case '7':
-                            case '8':
-                            case '9':
-                                return 1;
-                            // keys to process
-                            case 'C':
-							case 'B':
-							case 'F':
-							case '0':
-							case '6':
-                            case 'A':
-							case '4':
-                            case 'E':
-							case 'L':
-                            case VK_SPACE:
-							case 'K':
-							case 'J':
-							case 'H':
-                            case VK_BACK:
-                                {
-                                    //DWORD extended = (0x1000000 & lParam) >> 24; // Check if KEYEVENTF_EXTENDEDKEY
-                                    BYTE scanCode = static_cast<BYTE>(((0xFF0000u & lParam) >> 16) & 0xFFu);
+	case WM_SYSKEYUP:
+        break;
+    default:
+        return CallNextHookEx(NULL, code, wParam, lParam);
+    }
 
-                                    // Check if KEYEVENTF_KEYUP, otherwise will be set to down
-                                    auto dwFlags = (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) ? KEYEVENTF_KEYUP : 0;
-                                    dwFlags |= KEYEVENTF_EXTENDEDKEY;
-                                    dwFlags |= KEYEVENTF_SCANCODE;
+    PKBDLLHOOKSTRUCT hks = (PKBDLLHOOKSTRUCT)lParam;
 
-                                    INPUT ip;
-                                    ZeroMemory(&ip, sizeof(ip));
-                                    ip.type = INPUT_KEYBOARD;
-                                    switch (hks->vkCode) {
-                                        case VK_BACK:
-                                        case 'H':
-                                            ip.ki.wVk = VK_LEFT; 
-                                            break;
-                                        case 'J':
-                                            ip.ki.wVk = VK_DOWN;
-                                            break;
-                                        case 'K':
-                                            ip.ki.wVk = VK_UP;
-                                            break;
-                                        case VK_SPACE:
-                                        case 'L':
-                                            ip.ki.wVk = VK_RIGHT;
-                                            break;
-                                        case 'E':
-                                        case '4':
-                                            ip.ki.wVk = VK_END;
-                                            break;
-                                        case 'A':
-                                        case '6':
-                                        case '0':
-                                            ip.ki.wVk = VK_HOME;
-                                            break;
-                                        case 'F':
-                                            ip.ki.wVk = VK_NEXT;
-                                            break;
-                                        case 'B':
-                                            ip.ki.wVk = VK_PRIOR;
-                                            break;
-                                            // I keep running into keyboards without a BRK key
-                                        case 'C':
-                                            ip.ki.wVk = VK_PAUSE;
-                                            break;
-                                            // disabled keys to eliminate confusion
-                                    }
-                                    ip.ki.wScan = MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC);
-                                    ip.ki.dwFlags = dwFlags;
-                                    ip.ki.time = 0;
-                                    ip.ki.dwExtraInfo = 0;
-                                    SendInput(1, &ip, sizeof(ip));
-                                    return 1;						}
-							}
-							break;
-	}
-	}
+    // use both WIN and CTRL, because WIN by itself will open the
+    // start menu; however, if, while WIN is held down, some other
+    // modifier gets pressed, then it will not open the start menu.
+    // Otherwise, the modifiers MUST go out for further processing
+    // to avoid stuck / sticky keys :-)
+    if(hks->vkCode == VK_LWIN)
+    {
+        g_lwin = MY_KEYDOWN(hks);
+        return CallNextHookEx(NULL, code, wParam, lParam);
+    }
+    else if(hks->vkCode == VK_LCONTROL)
+    {
+        g_lctrl = MY_KEYDOWN(hks);
+        return CallNextHookEx(NULL, code, wParam, lParam);
+    }
+    else if(hks->vkCode == HOTKEY_KEY && g_lctrl && g_lwin)
+    {
+        if(MY_KEYDOWN(hks))
+        {
+            g_hotkeydown = TRUE;
+            // allegedly, this doesn't block the thread by waiting for
+            // the message to get processed
+            PostMessage(g_hwnd, WM_HOTKEY, 0, MAKELPARAM(HOTKEY_MODS, HOTKEY_KEY));
+        }
+        else
+        {
+            g_hotkeydown = FALSE;
+        }
+        return 1;
+    }
 
-	return CallNextHookEx(NULL, code, wParam, lParam);
+    // debt -- we swallowed up the down state of this key, the modifier
+    // was released in the meantime, so we don't want to issue a phantom
+    // keyup
+    if(hks->vkCode == HOTKEY_KEY && g_hotkeydown && MY_KEYUP(hks))
+    {
+        return 1;
+    }
+
+	if (!myState) return CallNextHookEx(NULL, code, wParam, lParam);
+
+    // SendInput
+    switch (hks->vkCode) {
+        // this is our hotkey out, and we need it to break out.
+        case HOTKEY_KEY:
+            break;
+            // leave these available for common operations
+        case 'C':
+        case 'V':
+        case 'X':
+        case 'Z':
+            break;
+            // disable most keys to avoid confusion
+        case 'D':
+        case 'I':
+        case 'G':
+        case 'M':
+        case 'N':
+        case 'O':
+        case 'P':
+        case 'Q':
+        case 'S':
+        case 'T':
+        case 'U':
+        case 'W':
+        case 'Y':
+        case '1':
+        case '2':
+        case '5':
+        case '7':
+        case '8':
+        case '9':
+            return 1;
+            // keys to process
+        case 'R':
+        case 'B':
+        case 'F':
+        case '0':
+        case '6':
+        case 'A':
+        case '4':
+        case 'E':
+        case 'L':
+        case 'K':
+        case 'J':
+        case 'H':
+            {
+                //DWORD extended = (0x1000000 & lParam) >> 24; // Check if KEYEVENTF_EXTENDEDKEY
+                BYTE scanCode = static_cast<BYTE>(((0xFF0000u & lParam) >> 16) & 0xFFu);
+
+                // Check if KEYEVENTF_KEYUP, otherwise will be set to down
+                auto dwFlags = (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) ? KEYEVENTF_KEYUP : 0;
+                dwFlags |= KEYEVENTF_EXTENDEDKEY;
+                dwFlags |= KEYEVENTF_SCANCODE;
+
+                INPUT ip;
+                ZeroMemory(&ip, sizeof(ip));
+                ip.type = INPUT_KEYBOARD;
+                switch (hks->vkCode) {
+                    case 'H':
+                        ip.ki.wVk = VK_LEFT; 
+                        break;
+                    case 'J':
+                        ip.ki.wVk = VK_DOWN;
+                        break;
+                    case 'K':
+                        ip.ki.wVk = VK_UP;
+                        break;
+                    case 'L':
+                        ip.ki.wVk = VK_RIGHT;
+                        break;
+                    case 'E':
+                    case '4':
+                        ip.ki.wVk = VK_END;
+                        break;
+                    case 'A':
+                    case '6':
+                    case '0':
+                        ip.ki.wVk = VK_HOME;
+                        break;
+                    case 'F':
+                        ip.ki.wVk = VK_NEXT;
+                        break;
+                    case 'B':
+                        ip.ki.wVk = VK_PRIOR;
+                        break;
+                        // I keep running into keyboards without a BRK key
+                    case 'R':
+                        ip.ki.wVk = VK_PAUSE;
+                        break;
+                        // disabled keys to eliminate confusion
+                }
+                ip.ki.wScan = MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC);
+                ip.ki.dwFlags = dwFlags;
+                ip.ki.time = 0;
+                ip.ki.dwExtraInfo = 0;
+                SendInput(1, &ip, sizeof(ip));
+                return 1;					
+            }
+    }
+
+    return CallNextHookEx(NULL, code, wParam, lParam);
 }
 
 void ShowTip(BOOL active)
@@ -275,7 +323,13 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
       return FALSE;
    }
 
-   RegisterHotKey(hWnd, 1, MOD_ALT | MOD_CONTROL | MOD_NOREPEAT, '3'); // TODO cleanup
+   //BOOL result = RegisterHotKey(hWnd, 1, HOTKEY_MODS, HOTKEY_KEY); // TODO cleanup
+   //if(!result)
+   //{
+   //    MessageBox(NULL, _T("Cannot register hotkey, exiting!"), _T("Cannot register hotkey"), MB_OK|MB_ICONERROR);
+   //    DestroyWindow(hWnd);
+   //    return FALSE;
+   //}
    g_hook = SetWindowsHookEx(WH_KEYBOARD_LL, &KeyboardHook, hInst, 0);
    g_hwnd = hWnd;
 
