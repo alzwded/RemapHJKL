@@ -18,15 +18,15 @@
 #define MY_MISIG 0xFF4A616B
 
 // Global Variables:
-HINSTANCE hInst;								// current instance
-TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
-TCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
+HINSTANCE hInst;                                // current instance
+TCHAR szTitle[MAX_LOADSTRING];                    // The title bar text
+TCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 // Forward declarations of functions included in this code module:
-ATOM				MyRegisterClass(HINSTANCE hInstance);
-BOOL				InitInstance(HINSTANCE, int);
-LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
+ATOM                MyRegisterClass(HINSTANCE hInstance);
+BOOL                InitInstance(HINSTANCE, int);
+LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 BOOL myState = FALSE;
 BOOL g_lwin = FALSE;
@@ -38,14 +38,14 @@ HICON g_icons[2] = { NULL, NULL };
 
 void Cleanup()
 {
-	UnregisterHotKey(g_hwnd, 1);
-	UnhookWindowsHookEx(g_hook);
-	NOTIFYICONDATA nid;
-	nid.cbSize = sizeof(NOTIFYICONDATA);
-	nid.uID = MY_NOTIFICATION_ICON;
-	nid.hWnd = g_hwnd;
-	nid.uFlags = 0;
-	Shell_NotifyIcon(NIM_DELETE, &nid);
+    UnregisterHotKey(g_hwnd, 1);
+    UnhookWindowsHookEx(g_hook);
+    NOTIFYICONDATA nid;
+    nid.cbSize = sizeof(NOTIFYICONDATA);
+    nid.uID = MY_NOTIFICATION_ICON;
+    nid.hWnd = g_hwnd;
+    nid.uFlags = 0;
+    Shell_NotifyIcon(NIM_DELETE, &nid);
 }
 
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
@@ -53,38 +53,38 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
                      _In_ LPTSTR    lpCmdLine,
                      _In_ int       nCmdShow)
 {
-	UNREFERENCED_PARAMETER(hPrevInstance);
-	UNREFERENCED_PARAMETER(lpCmdLine);
+    UNREFERENCED_PARAMETER(hPrevInstance);
+    UNREFERENCED_PARAMETER(lpCmdLine);
 
-	MSG msg;
-	HACCEL hAccelTable;
+    MSG msg;
+    HACCEL hAccelTable;
 
-	// Initialize global strings
-	LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-	LoadString(hInstance, IDC_REMAPHJKL, szWindowClass, MAX_LOADSTRING);
-	MyRegisterClass(hInstance);
+    // Initialize global strings
+    LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
+    LoadString(hInstance, IDC_REMAPHJKL, szWindowClass, MAX_LOADSTRING);
+    MyRegisterClass(hInstance);
 
-	// Perform application initialization:
-	if (!InitInstance (hInstance, nCmdShow))
-	{
-		return FALSE;
-	}
+    // Perform application initialization:
+    if (!InitInstance (hInstance, nCmdShow))
+    {
+        return FALSE;
+    }
 
-	hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_REMAPHJKL));
+    hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_REMAPHJKL));
 
-	// Main message loop:
-	while (GetMessage(&msg, NULL, 0, 0))
-	{
-		if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-	}
+    // Main message loop:
+    while (GetMessage(&msg, NULL, 0, 0))
+    {
+        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+    }
 
-	Cleanup();
-	
-	return (int) msg.wParam;
+    Cleanup();
+    
+    return (int) msg.wParam;
 }
 
 
@@ -95,36 +95,36 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 //
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
-	WNDCLASSEX wcex;
+    WNDCLASSEX wcex;
 
-	wcex.cbSize = sizeof(WNDCLASSEX);
+    wcex.cbSize = sizeof(WNDCLASSEX);
 
-	wcex.style			= CS_HREDRAW | CS_VREDRAW;
-	wcex.lpfnWndProc	= WndProc;
-	wcex.cbClsExtra		= 0;
-	wcex.cbWndExtra		= 0;
-	wcex.hInstance		= hInstance;
-	wcex.hIcon			= LoadIcon(hInstance, MAKEINTRESOURCE(IDI_REMAPHJKL));
-	wcex.hCursor		= LoadCursor(NULL, IDC_ARROW);
-	wcex.hbrBackground	= (HBRUSH)(COLOR_WINDOW+1);
-	wcex.lpszMenuName = NULL;// MAKEINTRESOURCE(IDC_REMAPHJKL);
-	wcex.lpszClassName	= szWindowClass;
-	wcex.hIconSm		= LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+    wcex.style            = CS_HREDRAW | CS_VREDRAW;
+    wcex.lpfnWndProc    = WndProc;
+    wcex.cbClsExtra        = 0;
+    wcex.cbWndExtra        = 0;
+    wcex.hInstance        = hInstance;
+    wcex.hIcon            = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_REMAPHJKL));
+    wcex.hCursor        = LoadCursor(NULL, IDC_ARROW);
+    wcex.hbrBackground    = (HBRUSH)(COLOR_WINDOW+1);
+    wcex.lpszMenuName = NULL;// MAKEINTRESOURCE(IDC_REMAPHJKL);
+    wcex.lpszClassName    = szWindowClass;
+    wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
-	return RegisterClassEx(&wcex);
+    return RegisterClassEx(&wcex);
 }
 
 LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
 {
     // pedantic
-	if (code != HC_ACTION) return CallNextHookEx(NULL, code, wParam, lParam);
+    if (code != HC_ACTION) return CallNextHookEx(NULL, code, wParam, lParam);
     // pedantic
     switch(wParam)
     {
-	case WM_KEYDOWN:
-	case WM_KEYUP:
-	case WM_SYSKEYDOWN:
-	case WM_SYSKEYUP:
+    case WM_KEYDOWN:
+    case WM_KEYUP:
+    case WM_SYSKEYDOWN:
+    case WM_SYSKEYUP:
         break;
     default:
         return CallNextHookEx(NULL, code, wParam, lParam);
@@ -163,7 +163,7 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
     }
 
     // if we're supposed to be dormant, pass control through
-	if (!myState) return CallNextHookEx(NULL, code, wParam, lParam);
+    if (!myState) return CallNextHookEx(NULL, code, wParam, lParam);
     // else, transform the keys we need to transform
 
     // SendInput
@@ -373,26 +373,26 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
 
 void ShowTip(BOOL active)
 {
-	NOTIFYICONDATA nid = {};
-	ZeroMemory(&nid, sizeof(NOTIFYICONDATA));
-	nid.cbSize = sizeof(NOTIFYICONDATA);
-	nid.uID = MY_NOTIFICATION_ICON;
-	nid.uFlags = NIF_TIP | NIF_SHOWTIP | NIF_ICON;
-	nid.hWnd = g_hwnd;
-	nid.uVersion = NOTIFYICON_VERSION_4;
+    NOTIFYICONDATA nid = {};
+    ZeroMemory(&nid, sizeof(NOTIFYICONDATA));
+    nid.cbSize = sizeof(NOTIFYICONDATA);
+    nid.uID = MY_NOTIFICATION_ICON;
+    nid.uFlags = NIF_TIP | NIF_SHOWTIP | NIF_ICON;
+    nid.hWnd = g_hwnd;
+    nid.uVersion = NOTIFYICON_VERSION_4;
 
-	TCHAR tip[64];
-	// TODO inform about current hotkey better
-	if (active) {
-		wsprintf(tip, _T("RemapHJKL (active) - Click to exit forever"));
-		nid.hIcon = g_icons[1];
-	} else {
-		wsprintf(tip, _T("RemapHJKL (not active) - Click to exit forever - Win+Ctrl+3"));
-		nid.hIcon = g_icons[0];
-	}
-	_tcsncpy_s(nid.szTip, tip, _tcslen(tip));
+    TCHAR tip[64];
+    // TODO inform about current hotkey better
+    if (active) {
+        wsprintf(tip, _T("RemapHJKL (active) - Click to exit forever"));
+        nid.hIcon = g_icons[1];
+    } else {
+        wsprintf(tip, _T("RemapHJKL (not active) - Click to exit forever - Win+Ctrl+3"));
+        nid.hIcon = g_icons[0];
+    }
+    _tcsncpy_s(nid.szTip, tip, _tcslen(tip));
 
-	Shell_NotifyIcon(NIM_MODIFY, &nid);
+    Shell_NotifyIcon(NIM_MODIFY, &nid);
 }
 
 //
@@ -412,7 +412,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hInst = hInstance; // Store instance handle in our global variable
 
    hWnd = CreateWindowEx(WS_EX_TOOLWINDOW, szWindowClass, szTitle, WS_POPUP,
-	   CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL);
+       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL);
 
    if (!hWnd)
    {
@@ -467,88 +467,88 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 //  PURPOSE:  Processes messages for the main window.
 //
-//  WM_COMMAND	- process the application menu
-//  WM_PAINT	- Paint the main window
-//  WM_DESTROY	- post a quit message and return
+//  WM_COMMAND    - process the application menu
+//  WM_PAINT    - Paint the main window
+//  WM_DESTROY    - post a quit message and return
 //
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	int wmId, wmEvent;
-	PAINTSTRUCT ps;
-	HDC hdc;
+    int wmId, wmEvent;
+    PAINTSTRUCT ps;
+    HDC hdc;
 
-	switch (message)
-	{
-	case MY_NOTIFY_ICON_MESSAGE_ID: {
-										auto what = LOWORD(lParam);
-										switch (what) {
-										case NIN_SELECT:
-											PostQuitMessage(0);
-											break;
-										case NIN_KEYSELECT:
-										case WM_CONTEXTMENU:
-											return DefWindowProc(hWnd, message, wParam, lParam);
-										}
-	}
-	case WM_COMMAND:
-		wmId    = LOWORD(wParam);
-		wmEvent = HIWORD(wParam);
-		// Parse the menu selections:
-		switch (wmId)
-		{
-		case IDM_ABOUT:
-			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-			break;
-		case IDM_EXIT:
-			DestroyWindow(hWnd);
-			break;
-		default:
-			return DefWindowProc(hWnd, message, wParam, lParam);
-		}
-		break;
-	case WM_PAINT:
-		hdc = BeginPaint(hWnd, &ps);
-		// TODO: Add any drawing code here...
-		EndPaint(hWnd, &ps);
-		break;
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		break;
-	case WM_HOTKEY:
+    switch (message)
+    {
+    case MY_NOTIFY_ICON_MESSAGE_ID: {
+                                        auto what = LOWORD(lParam);
+                                        switch (what) {
+                                        case NIN_SELECT:
+                                            PostQuitMessage(0);
+                                            break;
+                                        case NIN_KEYSELECT:
+                                        case WM_CONTEXTMENU:
+                                            return DefWindowProc(hWnd, message, wParam, lParam);
+                                        }
+    }
+    case WM_COMMAND:
+        wmId    = LOWORD(wParam);
+        wmEvent = HIWORD(wParam);
+        // Parse the menu selections:
+        switch (wmId)
+        {
+        case IDM_ABOUT:
+            DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+            break;
+        case IDM_EXIT:
+            DestroyWindow(hWnd);
+            break;
+        default:
+            return DefWindowProc(hWnd, message, wParam, lParam);
+        }
+        break;
+    case WM_PAINT:
+        hdc = BeginPaint(hWnd, &ps);
+        // TODO: Add any drawing code here...
+        EndPaint(hWnd, &ps);
+        break;
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        break;
+    case WM_HOTKEY:
         // since we no longer install an actual hotkey, we only end up
         // here after PostMessage(g_hwnd) from the keyboard hook
-		myState = !myState;
+        myState = !myState;
         if(!myState)
         {
             // reset scroll state when leaving our hijack mode
             g_scroll = FALSE;
         }
         // toggle notification icon
-		ShowTip(myState);
-		break;
-	default:
-		return DefWindowProc(hWnd, message, wParam, lParam);
-	}
-	return 0;
+        ShowTip(myState);
+        break;
+    default:
+        return DefWindowProc(hWnd, message, wParam, lParam);
+    }
+    return 0;
 }
 
 // Message handler for about box.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	UNREFERENCED_PARAMETER(lParam);
-	switch (message)
-	{
-	case WM_INITDIALOG:
-		return (INT_PTR)TRUE;
+    UNREFERENCED_PARAMETER(lParam);
+    switch (message)
+    {
+    case WM_INITDIALOG:
+        return (INT_PTR)TRUE;
 
-	case WM_COMMAND:
-		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-		{
-			EndDialog(hDlg, LOWORD(wParam));
-			return (INT_PTR)TRUE;
-		}
-		break;
-	}
-	return (INT_PTR)FALSE;
+    case WM_COMMAND:
+        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+        {
+            EndDialog(hDlg, LOWORD(wParam));
+            return (INT_PTR)TRUE;
+        }
+        break;
+    }
+    return (INT_PTR)FALSE;
 }
