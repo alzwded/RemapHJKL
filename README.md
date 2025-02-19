@@ -42,13 +42,30 @@ and applications read the keys at a lower level. Actually, this is the problem,
 it sometimes is, sometimes isn't AltGr.
 
 Caveats
-=======
+-------
 
 Under heavy system load, this will break and keys will get stuck.
 
 Because it's no longer using `RegisterHotkey`, you can now run it multiple
 times, which will be confusing. I'll need to get around to making sure
 it only runs once...
+
+Building
+--------
+
+If you are very familiar with native development, you can skip this section and do what you normally do, there are no special build requirements.
+
+You need some version of Visual Studio C++ Build Tools (or Visual Studio Community Edition, probably easier to get the latter).
+
+It doesn't really depend strongly on any particular build tools version. I just go into the [.vcxproj](./RemapHJKL/RemapHJKL.vcxproj) and change `PlatformToolset` to whatever I randomly have installed. Visual Studio itself will ask if you want to upgrade the solution or to retarget the platform toolset if you happen to have a different one. I think the newest API quirks I use hail from the Vista era, so pretty much any extant version of the build tools will do.
+
+Anyway, once that's out of the way, just build the release version for `x64`.
+
+If you only installed the build tools without visual studio, there's a [build script](./build.bat) which calls `msbuild`.
+
+The Release version is the only one worth running. This is not really debugabble, as the hook will still be registered even while the program is stopped. And you want all the speed optimizations the compiler will throw, this is ultimately adding lag to every input event on the system.
+
+Build the app with the right amount of bitness (usually x64).
 
 TODO
 ====
