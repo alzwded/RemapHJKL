@@ -29,7 +29,6 @@ INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 BOOL myState = FALSE;
 BOOL g_lwin = FALSE;
 BOOL g_lctrl = FALSE;
-BOOL g_hotkeydown = FALSE;
 HWND g_hwnd = NULL;
 HHOOK g_hook = NULL;
 HICON g_icons[2] = { NULL, NULL };
@@ -147,25 +146,14 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
     }
     else if(hks->vkCode == HOTKEY_KEY && g_lctrl && g_lwin)
     {
-        if(MY_KEYDOWN(hks))
+        // handle it on key up, otherwise we need to do cleanup
+        // with the key up event.
+        if(MY_KEYUP(hks))
         {
-            g_hotkeydown = TRUE;
             // allegedly, this doesn't block the thread by waiting for
             // the message to get processed
             PostMessage(g_hwnd, WM_HOTKEY, 0, MAKELPARAM(HOTKEY_MODS, HOTKEY_KEY));
         }
-        else
-        {
-            g_hotkeydown = FALSE;
-        }
-        return 1;
-    }
-
-    // debt -- we swallowed up the down state of this key, the modifier
-    // was released in the meantime, so we don't want to issue a phantom
-    // keyup
-    if(hks->vkCode == HOTKEY_KEY && g_hotkeydown && MY_KEYUP(hks))
-    {
         return 1;
     }
 
@@ -176,15 +164,24 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
         // this is our hotkey out, and we need it to break out.
         case HOTKEY_KEY:
             break;
-            // leave these available for common operations
+        // return to normal windows operation
+        case 'I':
+            // eat up down key; it's easier to only deal
+            // with the up event, otherwise we'd have to
+            // clean it up later
+            if(MY_KEYUP(hks))
+            {
+                PostMessage(g_hwnd, WM_HOTKEY, 0, MAKELPARAM(HOTKEY_MODS, HOTKEY_KEY));
+            }
+            return 1;
+        // leave these available for common operations
         case 'C':
         case 'V':
         case 'X':
         case 'Z':
             break;
-            // disable most keys to avoid confusion
+        // disable most keys to avoid confusion
         case 'D':
-        case 'I':
         case 'G':
         case 'M':
         case 'N':
@@ -202,7 +199,36 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
         case '8':
         case '9':
             return 1;
-            // keys to process
+        // keys to process
+        case VK_LEFT:
+        case VK_DOWN:
+        case VK_RIGHT:
+        case VK_UP:
+            // handle on key down for repeats
+            if(MY_KEYDOWN(hks))
+            {
+                DWORD dwFlags = 0;
+                LONG dir = 0;
+                switch(hks->vkCode)
+                {
+                    case VK_LEFT: dwFlags |= MOUSEEVENTF_HWHEEL; dir = -1; break;
+                    case VK_DOWN: dwFlags |= MOUSEEVENTF_WHEEL; dir = -1; break;
+                    case VK_RIGHT: dwFlags |= MOUSEEVENTF_HWHEEL; dir = +1; break;
+                    case VK_UP: dwFlags |= MOUSEEVENTF_WHEEL; dir = +1; break;
+                }
+                INPUT input;
+                ZeroMemory(&input, sizeof(input));
+                input.type = INPUT_MOUSE;
+                input.mi.dx = input.mi.dy = 0;
+                input.mi.dwFlags = dwFlags;
+                input.mi.dwExtraInfo = NULL;
+                input.mi.time = hks->time;
+                input.mi.mouseData = dir * WHEEL_DELTA;
+                SendInput(1, &input, sizeof(INPUT));
+            }
+            return 1;
+            // case arrows
+        // hijacked keys
         case 'R':
         case 'P':
         case 'B':
@@ -231,6 +257,7 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
                 ip.type = INPUT_KEYBOARD;
                 ip.ki.wVk = static_cast<WORD>(hks->vkCode & 0xFFFFu);
                 switch (hks->vkCode) {
+                    case 'I':
                     case 'H':
                         // shennanigans
                         // MapVirtualKey doesn't distinguish
@@ -303,22 +330,22 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
                             dwFlags |= ((HIBYTE(outScanCode) & 0xE0) ? KEYEVENTF_EXTENDEDKEY : 0);
                             break;
                         }
-                }
+                } // switch (hks->vkCode)
                 UINT outScanCode = MapVirtualKey(ip.ki.wVk, MAPVK_VK_TO_VSC_EX);
                 ip.ki.dwFlags = dwFlags;
                 ip.ki.time = hks->time;
                 ip.ki.dwExtraInfo = hks->dwExtraInfo;
                 SendInput(1, &ip, sizeof(ip));
-                return 1;
             }
-    }
+            return 1;
+            // case hijacked keys
+    } // switch (hks->vkCode)
 
     return CallNextHookEx(NULL, code, wParam, lParam);
-}
+} // CALLBACK KeyboardHook
 
 void ShowTip(BOOL active)
 {
-
 	NOTIFYICONDATA nid = {};
 	ZeroMemory(&nid, sizeof(NOTIFYICONDATA));
 	nid.cbSize = sizeof(NOTIFYICONDATA);
@@ -333,7 +360,7 @@ void ShowTip(BOOL active)
 		wsprintf(tip, _T("RemapHJKL (active) - Click to exit forever"));
 		nid.hIcon = g_icons[1];
 	} else {
-		wsprintf(tip, _T("RemapHJKL (not active) - Click to exit forever"));
+		wsprintf(tip, _T("RemapHJKL (not active) - Click to exit forever - Win+Ctrl+3"));
 		nid.hIcon = g_icons[0];
 	}
 	_tcsncpy_s(nid.szTip, tip, _tcslen(tip));

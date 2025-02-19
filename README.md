@@ -10,15 +10,17 @@ To switch the layout into *vim navigation mode* press `LControl`-`LWin`-`3`. To 
 Keys
 ----
 
-| Keys                  | Effect                       |
-|-----------------------|------------------------------|
-| `LControl` `LWin` `3` | Enter/leave hijack mode      |
-| `H`, `J`, `K`, `L`    | Arrows                       |
-| `6`, `0`, `A`         | `Home`                       |
-| `4`, `E`              | `End`                        |
-| `B`, `F`              | `PgUp`, `PgDwn`              |
-| `R`                   | `Break` (use with Control)   |
-| `P`                   | `Pause` (the weirdest scancode) |
+| Keys                  | Effect                                        |
+|-----------------------|-----------------------------------------------|
+| `LControl` `LWin` `3` | Enter/leave hijack mode                       |
+| `H`, `J`, `K`, `L`    | Arrows                                        |
+| `6`, `0`, `A`         | `Home`                                        |
+| `4`, `E`              | `End`                                         |
+| `B`, `F`              | `PgUp`, `PgDwn`                               |
+| `R`                   | `Break` (use with Control)                    |
+| `P`                   | `Pause` (the weirdest scancode)               |
+| `I`                   | When in hijack mode, leaves hijack mode       |
+| Arrow keys            | Mouse scroll (both horizontal AND vertical)   |
 
 All other letters and numbers get silently gobbled up to avoid confusion.
 
