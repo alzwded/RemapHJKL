@@ -29,6 +29,7 @@ INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 BOOL myState = FALSE;
 BOOL g_lwin = FALSE;
 BOOL g_lctrl = FALSE;
+BOOL g_scroll = FALSE;
 HWND g_hwnd = NULL;
 HHOOK g_hook = NULL;
 HICON g_icons[2] = { NULL, NULL };
@@ -187,7 +188,6 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
         case 'N':
         case 'O':
         case 'Q':
-        case 'S':
         case 'T':
         case 'U':
         case 'W':
@@ -199,11 +199,20 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
         case '8':
         case '9':
             return 1;
+        case 'S':
+            if(MY_KEYUP(hks))
+            {
+                g_scroll = !g_scroll;
+            }
+            return 1;
         // keys to process
         case VK_LEFT:
         case VK_DOWN:
         case VK_RIGHT:
         case VK_UP:
+            // we end up here again after synthesizing input;
+            // we could use SetMessageExtraInfo, but that's too silly
+            if(!g_scroll) break;
             // handle on key down for repeats
             if(MY_KEYDOWN(hks))
             {
@@ -482,6 +491,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	case WM_HOTKEY:
 		myState = !myState;
+        if(!myState)
+        {
+            g_scroll = FALSE;
+        }
 		ShowTip(myState);
 		break;
 	default:
