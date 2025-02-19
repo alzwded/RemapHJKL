@@ -15,6 +15,8 @@
 //#define HOTKEY_MODS (MOD_ALT | MOD_CONTROL | MOD_NOREPEAT)
 #define HOTKEY_MODS (MOD_WIN | MOD_CONTROL | MOD_NOREPEAT)
 
+#define MY_MISIG 0xFF4A616B
+
 // Global Variables:
 HINSTANCE hInst;								// current instance
 TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
@@ -33,7 +35,6 @@ BOOL g_scroll = FALSE;
 HWND g_hwnd = NULL;
 HHOOK g_hook = NULL;
 HICON g_icons[2] = { NULL, NULL };
-
 
 void Cleanup()
 {
@@ -55,7 +56,6 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
- 	// TODO: Place code here.
 	MSG msg;
 	HACCEL hAccelTable;
 
@@ -116,7 +116,9 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 
 LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
 {
+    // pedantic
 	if (code != HC_ACTION) return CallNextHookEx(NULL, code, wParam, lParam);
+    // pedantic
     switch(wParam)
     {
 	case WM_KEYDOWN:
@@ -130,6 +132,8 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
 
     PKBDLLHOOKSTRUCT hks = (PKBDLLHOOKSTRUCT)lParam;
 
+    // handle our global activation hotkey
+    // -----------------------------------
     // use both WIN and CTRL, because WIN by itself will open the
     // start menu; however, if, while WIN is held down, some other
     // modifier gets pressed, then it will not open the start menu.
@@ -158,7 +162,9 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
         return 1;
     }
 
+    // if we're supposed to be dormant, pass control through
 	if (!myState) return CallNextHookEx(NULL, code, wParam, lParam);
+    // else, transform the keys we need to transform
 
     // SendInput
     switch (hks->vkCode) {
@@ -199,21 +205,29 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
         case '8':
         case '9':
             return 1;
+        // toggle HJKL scroll mode
         case 'S':
             if(MY_KEYUP(hks))
             {
                 g_scroll = !g_scroll;
             }
             return 1;
-        // keys to process
+        // synthesize mouse scroll events
         case VK_LEFT:
         case VK_DOWN:
         case VK_RIGHT:
         case VK_UP:
-            // we end up here again after synthesizing input;
-            // we could use SetMessageExtraInfo, but that's too silly
-            if(!g_scroll) break;
-            // handle on key down for repeats
+            // we end up here again after synthesizing input for HJKL;
+            // were these the HJKL keys, or arrow/numpad keys?
+            if((hks->flags & LLKHF_INJECTED)
+                    && GetMessageExtraInfo() == MY_MISIG
+                    && !g_scroll)
+            {
+                // If we generated these events, pass thru unless g_scroll
+                break;
+            }
+            // handle the key down event to support repeats
+            // TODO just hoist this code under HJKL instead of reentering the hook
             if(MY_KEYDOWN(hks))
             {
                 DWORD dwFlags = 0;
@@ -233,6 +247,7 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
                 input.mi.dwExtraInfo = NULL;
                 input.mi.time = hks->time;
                 input.mi.mouseData = dir * WHEEL_DELTA;
+                SetMessageExtraInfo(MY_MISIG);
                 SendInput(1, &input, sizeof(INPUT));
             }
             return 1;
@@ -266,7 +281,6 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
                 ip.type = INPUT_KEYBOARD;
                 ip.ki.wVk = static_cast<WORD>(hks->vkCode & 0xFFFFu);
                 switch (hks->vkCode) {
-                    case 'I':
                     case 'H':
                         // shennanigans
                         // MapVirtualKey doesn't distinguish
@@ -344,6 +358,10 @@ LRESULT CALLBACK KeyboardHook(int code, WPARAM wParam, LPARAM lParam)
                 ip.ki.dwFlags = dwFlags;
                 ip.ki.time = hks->time;
                 ip.ki.dwExtraInfo = hks->dwExtraInfo;
+                // drew inspiration from Table PC API, the only known usage
+                // of GetMessageExtraInfo
+                // https://learn.microsoft.com/en-us/windows/win32/tablet/system-events-and-mouse-messages?redirectedfrom=MSDN#distinguishing-pen-input-from-mouse-and-touch
+                SetMessageExtraInfo(MY_MISIG);
                 SendInput(1, &ip, sizeof(ip));
             }
             return 1;
@@ -401,6 +419,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
       return FALSE;
    }
 
+   // Not using RegisterHotKey because Windows pre-reserved everything with MOD_WIN;
+   // which is exactly why I want to hijack a MOD_WIN hotkey back from it,
+   // I can live without whatever C-S-3 does (minimize third taskbar thing?)
    //BOOL result = RegisterHotKey(hWnd, 1, HOTKEY_MODS, HOTKEY_KEY); // TODO cleanup
    //if(!result)
    //{
@@ -408,12 +429,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    //    DestroyWindow(hWnd);
    //    return FALSE;
    //}
+
+   // install the super hook
    g_hook = SetWindowsHookEx(WH_KEYBOARD_LL, &KeyboardHook, hInst, 0);
+   // remember who our window to ping it back later
    g_hwnd = hWnd;
 
    ShowWindow(hWnd, SW_HIDE);
    UpdateWindow(hWnd);
 
+   // install a notification icon to show we exist
    NOTIFYICONDATA nid = {};
    ZeroMemory(&nid, sizeof(NOTIFYICONDATA));
    nid.cbSize = sizeof(NOTIFYICONDATA);
@@ -423,14 +448,15 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    nid.uVersion = NOTIFYICON_VERSION_4;
    nid.uCallbackMessage = MY_NOTIFY_ICON_MESSAGE_ID;
 
+   // load our icons
    g_icons[0] = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SMALL));
    g_icons[1] = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_SMALL_ACTIVE));
 
+   // actually install the notification icon
    nid.hIcon = g_icons[0];
    HRESULT sniHr = Shell_NotifyIcon(NIM_ADD, &nid);
    nid.uFlags = 0;
    sniHr = Shell_NotifyIcon(NIM_SETVERSION, &nid);
-
    ShowTip(FALSE);
 
    return TRUE;
@@ -490,11 +516,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		PostQuitMessage(0);
 		break;
 	case WM_HOTKEY:
+        // since we no longer install an actual hotkey, we only end up
+        // here after PostMessage(g_hwnd) from the keyboard hook
 		myState = !myState;
         if(!myState)
         {
+            // reset scroll state when leaving our hijack mode
             g_scroll = FALSE;
         }
+        // toggle notification icon
 		ShowTip(myState);
 		break;
 	default:

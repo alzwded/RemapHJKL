@@ -20,7 +20,8 @@ Keys
 | `R`                   | `Break` (use with Control)                    |
 | `P`                   | `Pause` (the weirdest scancode)               |
 | `I`                   | When in hijack mode, leaves hijack mode       |
-| `S`                   | HJKL and Arrow keys send mouse scroll events instead
+| `S`                   | HJKL keys send mouse scroll events instead    |
+| Arrow keys            | Send mouse scroll events, regardless of scroll mode |
 
 All other letters and numbers get silently gobbled up to avoid confusion.
 
